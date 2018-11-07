@@ -4,17 +4,40 @@ import os
 import types
 
 default_builds_configuration = {
+    'build-settings' : {
+        'pipelines' : {
+            'C++' : {
+                'steps' : [{
+                    'type' : 'compile',
+                    'input' : 'files',
+                    'output' : 'compiled-files',
+                    'tool' : 'g++',
+                    'arguments' : ['-Wall', '-c $FILE']
+                },{
+                    'type' : 'build',
+                    'input' : 'compiled-files',
+                    'output' : '$PROJECTNAME-files',
+                    'tool' : 'g++',
+                    'arguments' : ['-o $PROJECTNAME']
+                }]
+            }
+        }
+    },
     'targets': {
         'debug' : {
-            'debug' : True
+            'debug' : True,
+            'build-arguments' : ["-g","-std=c++11"]
         },
         'release' : {
-            'debug' : False
+            'debug' : False,
+            'build-arguments' : ["-std=c++11"]
         }
     },
     'projects' : {
         'default' : {
-
+            'library-paths' : [],
+            'libraries' : [],
+            'pipeline' : 'C++'
         }
     }
 }
@@ -27,10 +50,20 @@ def save_configuration(config):
         json.dump(config, file)
 
 if os.path.exists('builds.json'):
-    with open('builds.json', encoding='utf-8') as file:
-        builds_configuration = json.loads(file)
+    with open('builds.json', mode='r', encoding='utf-8') as file:
+        builds_configuration = json.load(file)
+else:
+    save_configuration(default_builds_configuration)
 
 active_configuration = {**default_builds_configuration, **builds_configuration}
+
+def output_settings(settings):
+    click.echo(json.dumps(settings, sort_keys=True, indent=2))
+
+def process_command_string(string, current_project, current_file = ''):
+    string = string.replace("$PROJECTNAME", current_project)
+    string = string.replace("$FILE", current_file)
+    return string
 
 @click.group()
 @click.version_option()
@@ -46,19 +79,26 @@ def settings():
 @settings.command('print')
 def print_settings():
     """Displays the currently active settings."""
-    click.echo(json.dumps(active_configuration, sort_keys=True, indent=2))
+    output_settings(active_configuration)
 
 @builds.command('add')
-@click.argument('file')
-def add(file):
+@click.argument('files', nargs=-1, type=click.Path())
+def add(files):
     """Add a file to the build."""
-    click.echo('Adding file ' + file + ' to the build')
     default_project = active_configuration.setdefault('default_project', 'default')
     projects = active_configuration.setdefault('projects', {'default':{}})
     project = projects.get(default_project)
-    files = project.setdefault('files', [])
-    files.append(file)
-    print_settings()
+    projectfiles = project.setdefault('files', [])
+    added_files = 0
+    for filename in files:
+        if filename not in projectfiles:
+            projectfiles.append(filename)
+            click.echo('+ ' + filename)
+            added_files += 1
+        else:
+            click.echo('# ' + filename + " already in project")
+    click.echo("Added " + str(added_files) + " files ")
+    save_configuration(active_configuration)
 
 
 @builds.command('build')
@@ -68,7 +108,49 @@ def build(project, target):
     """Build the project.
     This builds the project with the current settings in builds.json file.
     """
-    click.echo("build project " + project + " with " + target + " target")
+    active_project = active_configuration.setdefault('default_project', 'default')
+    projects = active_configuration.setdefault('projects', {'default':{}})
+    if projects is None:
+        click.echo("No projects configured")
+        return
+    project = projects.get(active_project)
+    if project is None:
+        click.echo("No project found with name " + active_project)
+        return
+    projectfiles = project.setdefault('files', [])
+    build_settings = active_configuration.get('build-settings');
+    if build_settings is None:
+        click.echo("Build settings is not configured")
+        return
+    pipelines = build_settings.get('pipelines')
+    if pipelines is None:
+        click.echo("No pipelines in build settings configured")
+        return
+    project_pipeline = project.get('pipeline')
+    if project_pipeline is None:
+        click.echo('No pipeline set for project ' + active_project)
+        return
+    pipeline = pipelines.get(project_pipeline)
+    if pipeline is None:
+        click.echo('No pipeline configuration for pipeline ' + project_pipeline)
+    build_steps = pipeline.get('steps')
+    out_files = {}
+    for step in build_steps:
+        type = step.get('type')
+        click.echo('Step ' + type)
+        if type == 'compile':
+            for project_file in projectfiles:
+                command = step.get('tool') + " " + " ".join(str(x) for x in step.get('arguments'))
+                command = process_command_string(command, active_project, project_file)
+                click.echo(command)
+                step_files = out_files.setdefault(step.get('output'), [])
+                step_files.append(project_file + ".o")
+        if type == 'build':
+            command = step.get('tool') + " " + " ".join(str(x) for x in step.get('arguments')) + " " + " ".join(str(x) for x in out_files[step.get('input')])
+            command = process_command_string(command, active_project)
+            click.echo(command)
+    click.echo('Finished ' + str(len(build_steps)) + ' steps')
+        
 
 
 @builds.group('set')
