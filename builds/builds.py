@@ -2,6 +2,9 @@ import click
 import json
 import os
 import types
+from buildcommand import BuildCommand
+from multiprocessing.dummy import Pool as ThreadPool
+import multiprocessing
 
 default_builds_configuration = {
     'build-settings' : {
@@ -12,7 +15,7 @@ default_builds_configuration = {
                     'input' : 'files',
                     'output' : 'compiled-files',
                     'tool' : 'g++',
-                    'arguments' : ['-Wall', '-c $FILE']
+                    'arguments' : ['-Wall', '-c $FILE -o $FILE.o']
                 },{
                     'type' : 'build',
                     'input' : 'compiled-files',
@@ -47,7 +50,7 @@ active_configuration = {}
 
 def save_configuration(config):
     with open('builds.json', 'w', encoding='utf-8') as file:
-        json.dump(config, file)
+        json.dump(config, file, indent=4)
 
 if os.path.exists('builds.json'):
     with open('builds.json', mode='r', encoding='utf-8') as file:
@@ -64,6 +67,22 @@ def process_command_string(string, current_project, current_file = ''):
     string = string.replace("$PROJECTNAME", current_project)
     string = string.replace("$FILE", current_file)
     return string
+
+runCommandErrors = False
+
+def RunCommand(command):
+    global runCommandErrors
+    if not runCommandErrors:
+        if not command.Run():
+            runCommandErrors = True
+    return runCommandErrors
+
+def RunCommands(build_commands):
+    pool = ThreadPool(multiprocessing.cpu_count())
+    pool.map(RunCommand, build_commands)
+    pool.close()
+    pool.join()
+    return not runCommandErrors
 
 @click.group()
 @click.version_option()
@@ -135,21 +154,31 @@ def build(project, target):
         click.echo('No pipeline configuration for pipeline ' + project_pipeline)
     build_steps = pipeline.get('steps')
     out_files = {}
+    stepsFinished = 0
     for step in build_steps:
-        type = step.get('type')
-        click.echo('Step ' + type)
-        if type == 'compile':
+        steptype = step.get('type')
+        buildCommands = []
+        #click.echo('Step ' + steptype)
+        if steptype == 'compile':
             for project_file in projectfiles:
                 command = step.get('tool') + " " + " ".join(str(x) for x in step.get('arguments'))
                 command = process_command_string(command, active_project, project_file)
-                click.echo(command)
+                buildCommands.append(BuildCommand(command, steptype, project_file))
                 step_files = out_files.setdefault(step.get('output'), [])
-                step_files.append(project_file + ".o")
-        if type == 'build':
+                outfile = project_file + ".o"
+                if outfile in step_files:
+                    continue
+                step_files.append(outfile)
+        if steptype == 'build':
             command = step.get('tool') + " " + " ".join(str(x) for x in step.get('arguments')) + " " + " ".join(str(x) for x in out_files[step.get('input')])
             command = process_command_string(command, active_project)
-            click.echo(command)
-    click.echo('Finished ' + str(len(build_steps)) + ' steps')
+            buildCommands.append(BuildCommand(command, steptype, active_project))
+        success = RunCommands(buildCommands)
+        if success:
+            stepsFinished += 1
+            continue
+        break
+    click.echo('Finished ' + str(stepsFinished) + ' steps')
         
 
 
