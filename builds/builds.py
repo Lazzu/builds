@@ -2,45 +2,50 @@ import click
 import json
 import os
 import types
-from buildcommand import BuildCommand
-from multiprocessing.dummy import Pool as ThreadPool
 import multiprocessing
+from buildcommand import BuildCommand
+from buildpipeline import BuildPipeline
+from commandpreprocessor import CommandPreprocessor
+from colorama import init
+from termcolor import colored
+
+init() # colorama to work on all platforms
 
 default_builds_configuration = {
     'build-settings' : {
-        'pipelines' : {
-            'C++' : {
-                'steps' : [{
-                    'type' : 'compile',
-                    'input' : 'files',
-                    'output' : 'compiled-files',
-                    'tool' : 'g++',
-                    'arguments' : ['-Wall', '-c $FILE -o $FILE.o']
-                },{
-                    'type' : 'build',
-                    'input' : 'compiled-files',
-                    'output' : '$PROJECTNAME-files',
-                    'tool' : 'g++',
-                    'arguments' : ['-o $PROJECTNAME']
-                }]
-            }
+        'C++' : {
+            'steps' : [{
+                'type' : 'compile',
+                'input' : 'files',
+                'output' : 'compiled-files',
+                'tool' : 'g++',
+                'arguments' : ['-Wall', '-c $FILE -o $FILE.o']
+            },{
+                'type' : 'build',
+                'input' : 'compiled-files',
+                'output' : '$PROJECTNAME-files',
+                'tool' : 'g++',
+                'arguments' : ['-o $PROJECTNAME']
+            }]
         }
     },
     'targets': {
         'debug' : {
             'debug' : True,
-            'build-arguments' : ["-g","-std=c++11"]
+            'arguments' : ["-g","-std=c++11"]
         },
         'release' : {
             'debug' : False,
-            'build-arguments' : ["-std=c++11"]
+            'arguments' : ["-std=c++11"]
         }
     },
     'projects' : {
         'default' : {
-            'library-paths' : [],
-            'libraries' : [],
-            'pipeline' : 'C++'
+            'pipeline' : 'C++',
+            'build-settings' : {
+                'library-paths' : [],
+                'libraries' : [],
+            }
         }
     }
 }
@@ -61,7 +66,7 @@ else:
 active_configuration = {**default_builds_configuration, **builds_configuration}
 
 def output_settings(settings):
-    click.echo(json.dumps(settings, sort_keys=True, indent=2))
+    click.echo(colored(json.dumps(settings, sort_keys=True, indent=2), 'green'))
 
 def process_command_string(string, current_project, current_file = ''):
     string = string.replace("$PROJECTNAME", current_project)
@@ -70,24 +75,10 @@ def process_command_string(string, current_project, current_file = ''):
 
 runCommandErrors = False
 
-def RunCommand(command):
-    global runCommandErrors
-    if not runCommandErrors:
-        if not command.Run():
-            runCommandErrors = True
-    return runCommandErrors
-
-def RunCommands(build_commands):
-    pool = ThreadPool(multiprocessing.cpu_count())
-    pool.map(RunCommand, build_commands)
-    pool.close()
-    pool.join()
-    return not runCommandErrors
-
 @click.group()
 @click.version_option()
 def builds():
-    """Builds project build management tool.
+    """Builds project build management tool.\n\n
     This tool manages the project building files.
     """
 
@@ -103,7 +94,7 @@ def print_settings():
 @builds.command('add')
 @click.argument('files', nargs=-1, type=click.Path())
 def add(files):
-    """Add a file to the build."""
+    """Add file(s) to the build."""
     default_project = active_configuration.setdefault('default_project', 'default')
     projects = active_configuration.setdefault('projects', {'default':{}})
     project = projects.get(default_project)
@@ -112,21 +103,41 @@ def add(files):
     for filename in files:
         if filename not in projectfiles:
             projectfiles.append(filename)
-            click.echo('+ ' + filename)
+            click.echo(colored('+ ', 'green') + filename)
             added_files += 1
         else:
-            click.echo('# ' + filename + " already in project")
+            click.echo(colored('# ', 'yellow') + filename + colored(" already in project", 'yellow'))
     click.echo("Added " + str(added_files) + " files ")
+    save_configuration(active_configuration)
+
+@builds.command('remove')
+@click.argument('files', nargs=-1, type=str)
+def remove(files):
+    """Remove file(s) from the build."""
+    default_project = active_configuration.setdefault('default_project', 'default')
+    projects = active_configuration.setdefault('projects', {'default':{}})
+    project = projects.get(default_project)
+    project_files = project.setdefault('files', [])
+    removed_files = 0
+    for filename in files:
+        if filename in project_files:
+            project_files.remove(filename)
+            click.echo(colored('- ', 'red') + filename)
+            removed_files += 1
+        else:
+            click.echo(colored('# ', 'yellow') + filename + colored(" not in project", 'yellow'))
+    click.echo("Removed " + str(removed_files) + " files")
     save_configuration(active_configuration)
 
 
 @builds.command('build')
 @click.argument('project', default=active_configuration.get('default_project', 'default'))
 @click.option('target', '--target', default='debug', help='Select target to build (debug/release)')
-def build(project, target):
-    """Build the project.
-    This builds the project with the current settings in builds.json file.
-    """
+@click.option('verbose', '--verbose', flag_value=True, help='Verbose command output')
+@click.option('jobs', '--jobs', default=multiprocessing.cpu_count(), help='Run commands in parallel with x amount of jobs')
+def build(project, target, verbose, jobs):
+    """This builds the selected project with the current settings in builds.json file. 
+    Selected project defaults to the currently active project set in the builds.json file."""
     active_project = active_configuration.setdefault('default_project', 'default')
     projects = active_configuration.setdefault('projects', {'default':{}})
     if projects is None:
@@ -137,7 +148,7 @@ def build(project, target):
         click.echo("No project found with name " + active_project)
         return
     projectfiles = project.setdefault('files', [])
-    build_settings = active_configuration.get('build-settings');
+    build_settings = active_configuration.get('build-settings')
     if build_settings is None:
         click.echo("Build settings is not configured")
         return
@@ -149,35 +160,15 @@ def build(project, target):
     if project_pipeline is None:
         click.echo('No pipeline set for project ' + active_project)
         return
-    pipeline = pipelines.get(project_pipeline)
+    pipeline_settings = pipelines.get(project_pipeline)
+    pipeline_configuration = {
+        'jobs' : jobs,
+        'verbose' : verbose
+    }
+    pipeline = BuildPipeline(active_project, project_pipeline, pipeline_settings, CommandPreprocessor(active_project), pipeline_configuration)
     if pipeline is None:
         click.echo('No pipeline configuration for pipeline ' + project_pipeline)
-    build_steps = pipeline.get('steps')
-    out_files = {}
-    stepsFinished = 0
-    for step in build_steps:
-        steptype = step.get('type')
-        buildCommands = []
-        #click.echo('Step ' + steptype)
-        if steptype == 'compile':
-            for project_file in projectfiles:
-                command = step.get('tool') + " " + " ".join(str(x) for x in step.get('arguments'))
-                command = process_command_string(command, active_project, project_file)
-                buildCommands.append(BuildCommand(command, steptype, project_file))
-                step_files = out_files.setdefault(step.get('output'), [])
-                outfile = project_file + ".o"
-                if outfile in step_files:
-                    continue
-                step_files.append(outfile)
-        if steptype == 'build':
-            command = step.get('tool') + " " + " ".join(str(x) for x in step.get('arguments')) + " " + " ".join(str(x) for x in out_files[step.get('input')])
-            command = process_command_string(command, active_project)
-            buildCommands.append(BuildCommand(command, steptype, active_project))
-        success = RunCommands(buildCommands)
-        if success:
-            stepsFinished += 1
-            continue
-        break
+    stepsFinished = pipeline.Run(projectfiles)
     click.echo('Finished ' + str(stepsFinished) + ' steps')
         
 

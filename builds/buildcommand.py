@@ -1,4 +1,5 @@
 import subprocess
+from termcolor import colored
 
 class BuildCommand:
 
@@ -7,15 +8,17 @@ class BuildCommand:
         self.commandtype = commandtype
         self.commandfile = commandfile
     
-    def Run(self):
-        print(self.commandtype +' ' + self.commandfile)
+    def Run(self, verbose=False):
+        print(colored(self.commandtype, 'green') + ' ' + self.commandfile)
         self.success = False
         try:
+            if verbose:
+                print(self.command)
             subprocess.run([self.command], shell=True, capture_output=True, check=True).stdout
             self.success = True
         except subprocess.CalledProcessError as e:
-            print(e.stderr.decode("utf-8"))
+            print(colored(self.commandtype + ' failed', 'red'))
+            message = e.stderr.decode("utf-8")
+            message = message.replace('error', colored('error', 'red'))
+            print(message)
         return self.success
-
-
-        
