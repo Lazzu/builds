@@ -12,36 +12,9 @@ from termcolor import colored
 init() # colorama to work on all platforms
 
 default_builds_configuration = {
-    'build-settings' : {
-        'C++' : {
-            'steps' : [{
-                'type' : 'compile',
-                'input' : 'files',
-                'output' : 'compiled-files',
-                'tool' : 'g++',
-                'arguments' : ['-Wall', '-c $FILE -o $FILE.o']
-            },{
-                'type' : 'build',
-                'input' : 'compiled-files',
-                'output' : '$PROJECTNAME-files',
-                'tool' : 'g++',
-                'arguments' : ['-o $PROJECTNAME']
-            }]
-        }
-    },
-    'targets': {
-        'debug' : {
-            'debug' : True,
-            'arguments' : ["-g","-std=c++11"]
-        },
-        'release' : {
-            'debug' : False,
-            'arguments' : ["-std=c++11"]
-        }
-    },
     'projects' : {
         'default' : {
-            'pipeline' : 'C++',
+            'pipeline' : 'CPP',
             'build-settings' : {
                 'library-paths' : [],
                 'libraries' : [],
@@ -73,7 +46,38 @@ def process_command_string(string, current_project, current_file = ''):
     string = string.replace("$FILE", current_file)
     return string
 
-runCommandErrors = False
+def add_file(file_list, filename):
+    filename = filename.replace('./', '')
+    if os.path.isdir(filename):
+        print('Dir')
+    file_list.append(filename)
+    click.echo(colored('+ ', 'green') + filename)
+
+def add_interactive_dir(file_list, dirname):
+    files = [dirname + '/' + f for f in os.listdir(dirname) if os.path.isfile(dirname + '/' + f)]
+    dirs = [dirname + '/' + d for d in os.listdir(dirname) if os.path.isdir(dirname + '/' + d) and len(os.listdir(dirname + '/' + d)) > 0]
+    added = 0
+    for f in files:
+        if not os.path.isfile(f):
+            continue
+        f = f.replace('./', '')
+        if f in file_list:
+            continue
+        if input('Add ' + f + ' ? (y/N) ') == 'y':
+            add_file(file_list, f)
+            added += 1
+    if len(dirs) > 0:
+        if input('Add files from subdirectories? (y/N) ') == 'y':
+            for d in dirs:
+                if input('Add files from dir ' + d + '? (y/N) ') == 'y':
+                    add_interactive_dir(file_list, d)
+    return added
+
+def add_interactive(file_list):
+    added = 0
+    added += add_interactive_dir(file_list, '.')
+    return added
+
 
 @click.group()
 @click.version_option()
@@ -82,33 +86,75 @@ def builds():
     This tool manages the project building files.
     """
 
+
 @builds.group('settings')
 def settings():
     """Settings related commands"""
+
 
 @settings.command('print')
 def print_settings():
     """Displays the currently active settings."""
     output_settings(active_configuration)
 
+
+@builds.command('add-library')
+@click.argument('args', nargs=-1, type=str)
+@click.option('path', '-p', default='', help='Add library path along with the library')
+def add_library(args, path):
+
+    # Figure out correct variables
+    default_project = active_configuration.setdefault('default_project', 'default')
+    projects = active_configuration.setdefault('projects', {'default':{}})
+    project = projects.get(default_project)
+    libs = project.get('libraries')
+    lib_paths = project.get('library-paths')
+
+    # Add path if it is valid
+    if path and os.path.isdir('./' + path):
+        if path not in lib_paths:
+            lib_paths.append(path)
+            print(colored('+ path ', 'green') + path)
+        else:
+            print(colored('# path ', 'yellow') + path + colored(' Already configured', 'yellow'))
+        
+
+    # Add libraries from the argument list
+    for lib in args:
+        if lib not in libs:
+            libs.append(lib)
+            print(colored('+ ', 'green') + lib)
+        else:
+            print(colored('# ', 'yellow') + lib + colored(' Already configured', 'yellow'))
+    
+    save_configuration(active_configuration)
+
+
+
 @builds.command('add')
-@click.argument('files', nargs=-1, type=click.Path())
-def add(files):
+@click.argument('files', nargs=-1, type=str)
+@click.option('interactive', '-i', flag_value=True, help='Add files interactively. Lists all files not yet in the project in the current directory, and asks if you want to add them or not.')
+def add(files, interactive):
     """Add file(s) to the build."""
     default_project = active_configuration.setdefault('default_project', 'default')
     projects = active_configuration.setdefault('projects', {'default':{}})
     project = projects.get(default_project)
     projectfiles = project.setdefault('files', [])
     added_files = 0
-    for filename in files:
-        if filename not in projectfiles:
-            projectfiles.append(filename)
-            click.echo(colored('+ ', 'green') + filename)
-            added_files += 1
-        else:
-            click.echo(colored('# ', 'yellow') + filename + colored(" already in project", 'yellow'))
-    click.echo("Added " + str(added_files) + " files ")
+    if(not interactive):
+        for filename in files:
+            if not os.path.isfile(filename):
+                continue
+            if filename not in projectfiles:
+                add_file(projectfiles, filename)
+                added_files += 1
+            else:
+                click.echo(colored('# ', 'yellow') + filename + colored(" already in project", 'yellow'))
+    else:
+        added_files = add_interactive(projectfiles)
+    click.echo("Added " + str(added_files) + " files")
     save_configuration(active_configuration)
+
 
 @builds.command('remove')
 @click.argument('files', nargs=-1, type=str)
@@ -138,39 +184,47 @@ def remove(files):
 def build(project, target, verbose, jobs):
     """This builds the selected project with the current settings in builds.json file. 
     Selected project defaults to the currently active project set in the builds.json file."""
+
     active_project = active_configuration.setdefault('default_project', 'default')
     projects = active_configuration.setdefault('projects', {'default':{}})
+
     if projects is None:
         click.echo("No projects configured")
         return
+
     project = projects.get(active_project)
+
     if project is None:
         click.echo("No project found with name " + active_project)
         return
+
     projectfiles = project.setdefault('files', [])
-    build_settings = active_configuration.get('build-settings')
-    if build_settings is None:
-        click.echo("Build settings is not configured")
-        return
-    pipelines = build_settings.get('pipelines')
-    if pipelines is None:
-        click.echo("No pipelines in build settings configured")
-        return
+    project_libraries = project.get('libraries', [])
+    project_library_paths = project.get('library-paths', [])
+    targets = project.get('targets')
+    project_target = targets.get(target)
+    target_arguments = project_target.get('arguments')
     project_pipeline = project.get('pipeline')
+
     if project_pipeline is None:
         click.echo('No pipeline set for project ' + active_project)
         return
-    pipeline_settings = pipelines.get(project_pipeline)
+
     pipeline_configuration = {
         'jobs' : jobs,
-        'verbose' : verbose
+        'verbose' : verbose,
+        'libraries' : project_libraries,
+        'library-paths' : project_library_paths,
+        'arguments' : target_arguments
     }
-    pipeline = BuildPipeline(active_project, project_pipeline, pipeline_settings, CommandPreprocessor(active_project), pipeline_configuration)
+
+    pipeline = BuildPipeline(active_project, project_pipeline, CommandPreprocessor(active_project), pipeline_configuration)
+
     if pipeline is None:
         click.echo('No pipeline configuration for pipeline ' + project_pipeline)
+    
     stepsFinished = pipeline.Run(projectfiles)
     click.echo('Finished ' + str(stepsFinished) + ' steps')
-        
 
 
 @builds.group('set')
