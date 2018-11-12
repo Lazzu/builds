@@ -44,15 +44,28 @@ default_builds_configuration = {
 builds_configuration = {}
 active_configuration = {}
 
+def search_config_path(current_path=''):
+    file_path = current_path = '.builds/builds.json'
+    if not os.path.exists(file_path):
+        next_path = '../' + current_path
+        if not os.path.exists(next_path):
+            return '.builds/builds.json'
+        return search_config_path('../' + current_path)
+    return file_path
+
+builds_file = search_config_path()
+
 def save_configuration(config):
-    with open('builds.json', 'w', encoding='utf-8') as file:
+    with open(builds_file, 'w', encoding='utf-8') as file:
         json.dump(config, file, indent=4)
 
-if os.path.exists('builds.json'):
-    with open('builds.json', mode='r', encoding='utf-8') as file:
+if os.path.exists(builds_file):
+    with open(builds_file, mode='r', encoding='utf-8') as file:
         builds_configuration = json.load(file)
 else:
-    save_configuration(default_builds_configuration)
+    if input(colored('Builds not initialized.', 'red') + ' Do you want to initialize a new builds file in the current directory? (y/N) ') == 'y':
+        os.makedirs('.builds', exist_ok=True)
+        save_configuration(default_builds_configuration)
 
 active_configuration = {**default_builds_configuration, **builds_configuration}
 
@@ -104,6 +117,30 @@ def builds():
     This tool manages the project building files.
     """
 
+@builds.group('project')
+def project():
+    """Displays the currently active settings."""
+
+
+@project.command('show')
+def project_show():
+    """Show the currently active project name"""
+    default_project = active_configuration.get('default_project', 'default')
+    print(default_project)
+
+@project.command('rename')
+@click.argument('newname', nargs=1, type=str)
+@click.option('target', '-p', default=active_configuration.get('default_project', 'default'), help='Rename the given project instead of the currently active project')
+def project_rename(newname, target):
+    """Rename the currently active project"""
+    default_project = active_configuration.get('default_project', 'default')
+    projects = active_configuration.get('projects', {'default':{}})
+    project = projects.get(target)
+    projects.pop(target, None)
+    projects[newname] = project
+    if default_project == target:
+        active_configuration['default_project'] = newname
+    save_configuration(active_configuration)
 
 @builds.group('settings')
 def settings():
@@ -113,11 +150,9 @@ def settings():
 @settings.command('print')
 def print_settings():
     """Displays the currently active settings."""
-    default_project = active_configuration.setdefault('default_project', 'default')
-    projects = active_configuration.setdefault('projects', {'default':{}})
-    project = projects.get(default_project)
-    build_settings = project.get("build-settings")
-    output_settings(build_settings)
+    output_settings(active_configuration)
+
+
 
 @builds.command('add-library')
 @click.argument('args', nargs=-1, type=str)
@@ -244,10 +279,9 @@ def build(project, target, verbose, rebuild, jobs):
         return
 
     projectfiles = project.setdefault('files', [])
-    build_settings = project.get("build-settings")
-    project_libraries = build_settings.get('libraries', [])
-    project_library_paths = build_settings.get('library-paths', [])
-    project_include_paths = build_settings.get('include-paths', [])
+    project_libraries = project.get('libraries', [])
+    project_library_paths = project.get('library-paths', [])
+    project_include_paths = project.get('include-paths', [])
     targets = project.get('targets')
     project_target = targets.get(target)
     target_arguments = project_target.get('arguments')
