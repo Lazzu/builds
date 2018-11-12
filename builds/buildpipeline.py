@@ -90,7 +90,7 @@ class BuildPipeline:
         return func(self.projectname, settings, files)
 
     def RunCommand(self, command):
-        if not command.Run(self.pipeline_configuration.get('verbose', False)):
+        if not command.Run(self.pipeline_configuration):
             self.run_command_errors = True
         return self.run_command_errors
 
