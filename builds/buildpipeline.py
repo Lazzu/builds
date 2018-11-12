@@ -13,8 +13,9 @@ class CPP:
     def compile(self, project_name, settings, files):
         commands = []
         step_files = []
+        include_paths = ['-I' + inc for inc in settings['include-paths']]
         for project_file in files:
-            command = settings.get('tool') + " " + " ".join(str(x) for x in settings.get('arguments'))
+            command = settings.get('tool') + " " + " ".join(str(x) for x in settings.get('arguments')) + " " + " ".join(include_paths);
             command = self.command_processor.Process(command, project_file)
             outfile = project_file + ".o"
             if outfile in step_files:
@@ -77,12 +78,14 @@ class BuildPipeline:
         self.pipeline_configuration = pipeline_configuration
         self.libraries = pipeline_configuration['libraries']
         self.library_paths = pipeline_configuration['library-paths']
+        self.include_paths = pipeline_configuration['include-paths']
         self.arguments = pipeline_configuration['arguments']
     
     def GenerateStep(self, step, settings, files):
         func = getattr(self.step, step)
         settings['libraries'] = self.libraries
         settings['library-paths'] = self.library_paths
+        settings['include-paths'] = self.include_paths
         settings['arguments'] += self.arguments
         return func(self.projectname, settings, files)
 
