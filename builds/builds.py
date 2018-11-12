@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import click
 import json
 import os
@@ -18,6 +20,21 @@ default_builds_configuration = {
             'build-settings' : {
                 'library-paths' : [],
                 'libraries' : [],
+            },
+            "targets": {
+                "debug": {
+                    "arguments": [
+                        "-g",
+                        "-std=c++11"
+                    ],
+                    "debug": True
+                },
+                "release": {
+                    "arguments": [
+                        "-std=c++11"
+                    ],
+                    "debug": False
+                }
             }
         }
     }
