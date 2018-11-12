@@ -18,6 +18,7 @@ default_builds_configuration = {
         'default' : {
             'pipeline' : 'CPP',
             'build-settings' : {
+                'include-paths' : [],
                 'library-paths' : [],
                 'libraries' : [],
             },
@@ -112,8 +113,11 @@ def settings():
 @settings.command('print')
 def print_settings():
     """Displays the currently active settings."""
-    output_settings(active_configuration)
-
+    default_project = active_configuration.setdefault('default_project', 'default')
+    projects = active_configuration.setdefault('projects', {'default':{}})
+    project = projects.get(default_project)
+    build_settings = project.get("build-settings")
+    output_settings(build_settings)
 
 @builds.command('add-library')
 @click.argument('args', nargs=-1, type=str)
@@ -124,8 +128,9 @@ def add_library(args, path):
     default_project = active_configuration.setdefault('default_project', 'default')
     projects = active_configuration.setdefault('projects', {'default':{}})
     project = projects.get(default_project)
-    libs = project.get('libraries')
-    lib_paths = project.get('library-paths')
+    build_settings = project.get("build-settings")
+    libs = build_settings.get('libraries')
+    lib_paths = build_settings.get('library-paths')
 
     # Add path if it is valid
     if path and os.path.isdir('./' + path):
@@ -137,6 +142,7 @@ def add_library(args, path):
         
 
     # Add libraries from the argument list
+    if libs == None: libs = []
     for lib in args:
         if lib not in libs:
             libs.append(lib)
@@ -146,6 +152,27 @@ def add_library(args, path):
     
     save_configuration(active_configuration)
 
+@builds.command('add-include')
+@click.argument('args', nargs=-1, type=str)
+def add_include(args):
+
+    # Figure out correct variables
+    default_project = active_configuration.setdefault('default_project', 'default')
+    projects = active_configuration.setdefault('projects', {'default':{}})
+    project = projects.get(default_project)
+    build_settings = project.get("build-settings")
+    inc_paths = build_settings.get('include-paths')
+
+    # Add path if it is valid
+    for path in args:
+        if path and os.path.isdir('./' + path):
+            if path not in inc_paths:
+                inc_paths.append(path)
+                print(colored('+ path ', 'green') + path)
+            else:
+                print(colored('# path ', 'yellow') + path + colored(' Already configured', 'yellow'))
+    
+    save_configuration(active_configuration)
 
 
 @builds.command('add')
@@ -216,8 +243,10 @@ def build(project, target, verbose, jobs):
         return
 
     projectfiles = project.setdefault('files', [])
-    project_libraries = project.get('libraries', [])
-    project_library_paths = project.get('library-paths', [])
+    build_settings = project.get("build-settings")
+    project_libraries = build_settings.get('libraries', [])
+    project_library_paths = build_settings.get('library-paths', [])
+    project_include_paths = build_settings.get('include-paths', [])
     targets = project.get('targets')
     project_target = targets.get(target)
     target_arguments = project_target.get('arguments')
@@ -232,6 +261,7 @@ def build(project, target, verbose, jobs):
         'verbose' : verbose,
         'libraries' : project_libraries,
         'library-paths' : project_library_paths,
+        'include-paths' : project_include_paths,
         'arguments' : target_arguments
     }
 
