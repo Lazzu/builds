@@ -54,7 +54,7 @@ def search_config_path(current_path=''):
             current_path = next_path
             continue
         return file_path
-    
+
 
 builds_file = search_config_path()
 
@@ -88,23 +88,31 @@ def add_file(file_list, filename):
     click.echo(colored('+ ', 'green') + filename)
 
 def add_interactive_dir(file_list, dirname):
-    files = [dirname + '/' + f for f in os.listdir(dirname) if os.path.isfile(dirname + '/' + f)]
-    dirs = [dirname + '/' + d for d in os.listdir(dirname) if os.path.isdir(dirname + '/' + d) and len(os.listdir(dirname + '/' + d)) > 0]
     added = 0
-    for f in files:
-        if not os.path.isfile(f):
-            continue
-        f = f.replace('./', '')
-        if f in file_list:
-            continue
-        if input('Add ' + f + ' ? (y/N) ') == 'y':
-            add_file(file_list, f)
-            added += 1
-    if len(dirs) > 0:
-        if input('Add files from subdirectories? (y/N) ') == 'y':
-            for d in dirs:
-                if input('Add files from dir ' + d + '? (y/N) ') == 'y':
-                    add_interactive_dir(file_list, d)
+    do_continue = True
+    while do_continue:
+        do_continue = False
+
+        files = [dirname + '/' + f for f in os.listdir(dirname) if os.path.isfile(dirname + '/' + f)]
+        dirs = [dirname + '/' + d for d in os.listdir(dirname) if os.path.isdir(dirname + '/' + d) and len(os.listdir(dirname + '/' + d)) > 0]
+
+        for f in files:
+            if not os.path.isfile(f):
+                continue
+            f = f.replace('./', '')
+            if f in file_list:
+                continue
+            if input('Add ' + f + ' ? (y/N) ') == 'y':
+                add_file(file_list, f)
+                added += 1
+
+        if len(dirs) > 0:
+            if input('Add files from subdirectories? (y/N) ') == 'y':
+                for d in dirs:
+                    if input('Add files from dir ' + d + '? (y/N) ') == 'y':
+                        dirname = d
+                        do_continue = True
+        
     return added
 
 def add_interactive(file_list):
