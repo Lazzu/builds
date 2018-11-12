@@ -11,6 +11,9 @@ Not production ready.
 $ python builds.py add hello.cpp
 + hello.cpp
 Added 1 file(s)
+$ python builds/builds.py add-library memmanage -p libs
++ path libs
++ memmanage
 $ python builds.py build
 compile hello.cpp
 build hello
