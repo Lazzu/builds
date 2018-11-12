@@ -290,9 +290,10 @@ def build(project, target, verbose, rebuild, jobs):
         return
 
     projectfiles = project.setdefault('files', [])
-    project_libraries = project.get('libraries', [])
-    project_library_paths = project.get('library-paths', [])
-    project_include_paths = project.get('include-paths', [])
+    build_settings = project.get('build-settings', [])
+    project_libraries = build_settings.get('libraries', [])
+    project_library_paths = build_settings.get('library-paths', [])
+    project_include_paths = build_settings.get('include-paths', [])
     targets = project.get('targets')
     project_target = targets.get(target)
     target_arguments = project_target.get('arguments')
