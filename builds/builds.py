@@ -44,13 +44,15 @@ default_builds_configuration = {
 builds_configuration = {}
 active_configuration = {}
 
+BUILDSFILENAME = '.buildsfile'
+
 def search_config_path(current_path=''):
     while True:
-        file_path = current_path + '.builds/builds.json'
+        file_path = current_path + '/' + BUILDSFILENAME
         if not os.path.exists(file_path):
             next_path = '../' + current_path
             if not os.path.exists(next_path):
-                return '.builds/builds.json'
+                return BUILDSFILENAME
             current_path = next_path
             continue
         return file_path
@@ -67,7 +69,6 @@ if os.path.exists(builds_file):
         builds_configuration = json.load(file)
 else:
     if input(colored('Builds not initialized.', 'red') + ' Do you want to initialize a new builds file in the current directory? (y/N) ') == 'y':
-        os.makedirs('.builds', exist_ok=True)
         save_configuration(default_builds_configuration)
 
 active_configuration = {**default_builds_configuration, **builds_configuration}
@@ -273,8 +274,8 @@ def remove(files):
 @click.option('rebuild', '--rebuild', flag_value=True, help='Clean and re-build .o files')
 @click.option('jobs', '--jobs', default=multiprocessing.cpu_count(), help='Run commands in parallel with x amount of jobs')
 def build(project, target, verbose, rebuild, jobs):
-    """This builds the selected project with the current settings in builds.json file. 
-    Selected project defaults to the currently active project set in the builds.json file."""
+    """This builds the selected project with the current settings in BUILDSFILENAME file. 
+    Selected project defaults to the currently active project set in the BUILDSFILENAME file."""
 
     active_project = active_configuration.setdefault('default_project', 'default')
     projects = active_configuration.setdefault('projects', {'default':{}})
