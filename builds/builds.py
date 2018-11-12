@@ -45,13 +45,16 @@ builds_configuration = {}
 active_configuration = {}
 
 def search_config_path(current_path=''):
-    file_path = current_path = '.builds/builds.json'
-    if not os.path.exists(file_path):
-        next_path = '../' + current_path
-        if not os.path.exists(next_path):
-            return '.builds/builds.json'
-        return search_config_path('../' + current_path)
-    return file_path
+    while True:
+        file_path = current_path + '.builds/builds.json'
+        if not os.path.exists(file_path):
+            next_path = '../' + current_path
+            if not os.path.exists(next_path):
+                return '.builds/builds.json'
+            current_path = next_path
+            continue
+        return file_path
+    
 
 builds_file = search_config_path()
 
