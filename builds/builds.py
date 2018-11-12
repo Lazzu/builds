@@ -224,8 +224,9 @@ def remove(files):
 @click.argument('project', default=active_configuration.get('default_project', 'default'))
 @click.option('target', '--target', default='debug', help='Select target to build (debug/release)')
 @click.option('verbose', '--verbose', flag_value=True, help='Verbose command output')
+@click.option('rebuild', '--rebuild', flag_value=True, help='Clean and re-build .o files')
 @click.option('jobs', '--jobs', default=multiprocessing.cpu_count(), help='Run commands in parallel with x amount of jobs')
-def build(project, target, verbose, jobs):
+def build(project, target, verbose, rebuild, jobs):
     """This builds the selected project with the current settings in builds.json file. 
     Selected project defaults to the currently active project set in the builds.json file."""
 
@@ -259,6 +260,7 @@ def build(project, target, verbose, jobs):
     pipeline_configuration = {
         'jobs' : jobs,
         'verbose' : verbose,
+        'rebuild' : rebuild,
         'libraries' : project_libraries,
         'library-paths' : project_library_paths,
         'include-paths' : project_include_paths,

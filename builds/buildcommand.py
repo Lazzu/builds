@@ -1,3 +1,4 @@
+import os
 import subprocess
 from termcolor import colored
 
@@ -8,7 +9,15 @@ class BuildCommand:
         self.commandtype = commandtype
         self.commandfile = commandfile
     
-    def Run(self, verbose=False):
+    def Run(self, pipeline_configuration):
+        verbose = pipeline_configuration.get('verbose', False);
+        rebuild = pipeline_configuration.get('rebuild', False);
+        if not rebuild and os.path.isfile(self.commandfile + ".o"):
+            in_mtime = os.path.getmtime(self.commandfile)
+            out_mtime = os.path.getmtime(self.commandfile + ".o")
+            if out_mtime > in_mtime:
+                return True
+
         print(colored(self.commandtype, 'green') + ' ' + self.commandfile)
         self.success = False
         try:
