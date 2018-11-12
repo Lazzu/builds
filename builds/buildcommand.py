@@ -14,7 +14,7 @@ class BuildCommand:
         try:
             if verbose:
                 print(self.command)
-            message = subprocess.run([self.command], shell=True, capture_output=True, check=True).stdout.decode("utf-8")
+            message = subprocess.run([self.command], shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE, check=True).stdout.decode("utf-8")
             self.success = True
         except subprocess.CalledProcessError as e:
             print(colored(self.commandtype + ' failed', 'red'))
