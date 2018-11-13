@@ -19,6 +19,7 @@ default_builds_configuration = {
             'pipeline' : 'CPP',
             'build-settings' : {
                 'include-paths' : [],
+                'shared-library-paths' : [],
                 'library-paths' : [],
                 'libraries' : [],
             },
@@ -199,6 +200,39 @@ def add_library(args, path):
     
     save_configuration(active_configuration)
 
+@builds.command('add-shared-library')
+@click.argument('args', nargs=-1, type=str)
+@click.option('path', '-p', default='', help='Add shared library path along with the library')
+def add_library(args, path):
+
+    # Figure out correct variables
+    default_project = active_configuration.setdefault('default_project', 'default')
+    projects = active_configuration.setdefault('projects', {'default':{}})
+    project = projects.get(default_project)
+    build_settings = project.get("build-settings")
+    libs = build_settings.get('libraries')
+    slib_paths = build_settings.get('shared-library-paths')
+
+    # Add path if it is valid
+    if path and os.path.isdir('./' + path):
+        if path not in slib_paths:
+            slib_paths.append(path)
+            print(colored('+ path ', 'green') + path)
+        else:
+            print(colored('# path ', 'yellow') + path + colored(' Already configured', 'yellow'))
+        
+
+    # Add libraries from the argument list
+    if libs == None: libs = []
+    for lib in args:
+        if lib not in libs:
+            libs.append(lib)
+            print(colored('+ ', 'green') + lib)
+        else:
+            print(colored('# ', 'yellow') + lib + colored(' Already configured', 'yellow'))
+    
+    save_configuration(active_configuration)
+
 @builds.command('add-include')
 @click.argument('args', nargs=-1, type=str)
 def add_include(args):
@@ -294,6 +328,7 @@ def build(project, target, verbose, rebuild, jobs):
     build_settings = project.get('build-settings', [])
     project_libraries = build_settings.get('libraries', [])
     project_library_paths = build_settings.get('library-paths', [])
+    project_shared_library_paths = build_settings.get('shared-library-paths', [])
     project_include_paths = build_settings.get('include-paths', [])
     targets = project.get('targets')
     project_target = targets.get(target)
@@ -310,6 +345,7 @@ def build(project, target, verbose, rebuild, jobs):
         'rebuild' : rebuild,
         'libraries' : project_libraries,
         'library-paths' : project_library_paths,
+        'shared-library-paths' : project_shared_library_paths,
         'include-paths' : project_include_paths,
         'arguments' : target_arguments
     }

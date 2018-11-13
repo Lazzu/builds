@@ -32,7 +32,8 @@ class CPP:
                 oFiles.append(file)
         libraries = ['-l' + lib for lib in settings['libraries']]
         library_paths = ['-L' + lib for lib in settings['library-paths']]
-        command = settings.get('tool') + " " + " ".join(library_paths) + " " + " ".join(libraries) + " " + " ".join(str(x) for x in settings.get('arguments')) + " " + " ".join(str(x) for x in oFiles)
+        shared_library_paths = ['-Wl,-rpath,' + slib for slib in settings['shared-library-paths']]
+        command = settings.get('tool') + " " + " ".join(library_paths) + " " + " ".join(shared_library_paths) + " " + " ".join(libraries) + " " + " ".join(str(x) for x in settings.get('arguments')) + " " + " ".join(str(x) for x in oFiles)
         command = self.command_processor.Process(command, project_name)
         commands = [BuildCommand(command, 'build', project_name)]
         step_files = [project_name]
@@ -78,6 +79,7 @@ class BuildPipeline:
         self.pipeline_configuration = pipeline_configuration
         self.libraries = pipeline_configuration['libraries']
         self.library_paths = pipeline_configuration['library-paths']
+        self.shared_library_paths = pipeline_configuration['shared-library-paths']
         self.include_paths = pipeline_configuration['include-paths']
         self.arguments = pipeline_configuration['arguments']
     
@@ -85,6 +87,7 @@ class BuildPipeline:
         func = getattr(self.step, step)
         settings['libraries'] = self.libraries
         settings['library-paths'] = self.library_paths
+        settings['shared-library-paths'] = self.shared_library_paths
         settings['include-paths'] = self.include_paths
         settings['arguments'] += self.arguments
         return func(self.projectname, settings, files)
