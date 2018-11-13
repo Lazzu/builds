@@ -4,21 +4,24 @@ from termcolor import colored
 
 class BuildCommand:
 
-    def __init__(self, command, commandtype, commandfile):
+    def __init__(self, command, commandtype, displayName, infile, outfile):
         self.command = command
         self.commandtype = commandtype
-        self.commandfile = commandfile
+        self.infile = infile
+        self.outfile = outfile
+        self.displayName = displayName
     
     def Run(self, pipeline_configuration):
         verbose = pipeline_configuration.get('verbose', False);
         rebuild = pipeline_configuration.get('rebuild', False);
-        if not rebuild and os.path.isfile(self.commandfile + ".o"):
-            in_mtime = os.path.getmtime(self.commandfile)
-            out_mtime = os.path.getmtime(self.commandfile + ".o")
+        if self.infile != self.outfile and not rebuild and os.path.isfile(self.infile) and os.path.isfile(self.outfile):
+            in_mtime = os.path.getmtime(self.infile)
+            out_mtime = os.path.getmtime(self.outfile)
             if out_mtime > in_mtime:
+                self.success = True
                 return True
 
-        print(colored(self.commandtype, 'green') + ' ' + self.commandfile)
+        print(colored(self.commandtype, 'green') + ' ' + self.displayName)
         self.success = False
         try:
             if verbose:
