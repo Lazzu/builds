@@ -80,8 +80,8 @@ else:
 active_configuration = {**DEFAULT_BUILDS_CONFIGURATION, **builds_configuration}
 
 
-def output_settings(settings):
-    click.echo(colored(json.dumps(settings, sort_keys=True, indent=2), 'green'))
+def output_settings(settings_out):
+    click.echo(colored(json.dumps(settings_out, sort_keys=True, indent=2), 'green'))
 
 
 def process_command_string(string, current_project, current_file = ''):
@@ -169,9 +169,9 @@ def project_rename(newname, target):
     """Rename the currently active project"""
     default_project = active_configuration.get('default_project', 'default')
     projects = active_configuration.get('projects', {'default': {}})
-    project = projects.get(target)
+    project_settings = projects.get(target)
     projects.pop(target, None)
-    projects[newname] = project
+    projects[newname] = project_settings
     if default_project == target:
         active_configuration['default_project'] = newname
     save_configuration(active_configuration)
@@ -196,8 +196,8 @@ def add_library(args, path):
     # Figure out correct variables
     default_project = active_configuration.setdefault('default_project', 'default')
     projects = active_configuration.setdefault('projects', {'default':{}})
-    project = projects.get(default_project)
-    build_settings = project.get("build-settings")
+    project_settings = projects.get(default_project)
+    build_settings = project_settings.get("build-settings")
     libs = build_settings.get('libraries')
     lib_paths = build_settings.get('library-paths')
 
@@ -230,8 +230,8 @@ def add_library(args, path):
     # Figure out correct variables
     default_project = active_configuration.setdefault('default_project', 'default')
     projects = active_configuration.setdefault('projects', {'default':{}})
-    project = projects.get(default_project)
-    build_settings = project.get("build-settings")
+    project_settings = projects.get(default_project)
+    build_settings = project_settings.get("build-settings")
     libs = build_settings.get('libraries')
     slib_paths = build_settings.get('shared-library-paths')
 
@@ -244,7 +244,8 @@ def add_library(args, path):
             print(colored('# path ', 'yellow') + path + colored(' Already configured', 'yellow'))
 
     # Add libraries from the argument list
-    if libs == None: libs = []
+    if libs is None:
+        libs = []
     for lib in args:
         if lib not in libs:
             libs.append(lib)
@@ -262,8 +263,8 @@ def add_include(args):
     # Figure out correct variables
     default_project = active_configuration.setdefault('default_project', 'default')
     projects = active_configuration.setdefault('projects', {'default':{}})
-    project = projects.get(default_project)
-    build_settings = project.get("build-settings")
+    project_settings = projects.get(default_project)
+    build_settings = project_settings.get("build-settings")
     inc_paths = build_settings.get('include-paths')
 
     # Add path if it is valid
@@ -287,20 +288,20 @@ def add(files, interactive):
     """Add file(s) to the build."""
     default_project = active_configuration.setdefault('default_project', 'default')
     projects = active_configuration.setdefault('projects', {'default':{}})
-    project = projects.get(default_project)
-    projectfiles = project.setdefault('files', [])
+    project_settings = projects.get(default_project)
+    project_files = project_settings.setdefault('files', [])
     added_files = 0
-    if(not interactive):
+    if not interactive:
         for filename in files:
             if not os.path.isfile(filename):
                 continue
-            if filename not in projectfiles:
-                add_file(projectfiles, filename)
+            if filename not in project_files:
+                add_file(project_files, filename)
                 added_files += 1
             else:
                 click.echo(colored('# ', 'yellow') + filename + colored(" already in project", 'yellow'))
     else:
-        added_files = add_interactive(projectfiles)
+        added_files = add_interactive(project_files)
     click.echo("Added " + str(added_files) + " files")
     save_configuration(active_configuration)
 
@@ -311,8 +312,8 @@ def remove(files):
     """Remove file(s) from the build."""
     default_project = active_configuration.setdefault('default_project', 'default')
     projects = active_configuration.setdefault('projects', {'default':{}})
-    project = projects.get(default_project)
-    project_files = project.setdefault('files', [])
+    project_settings = projects.get(default_project)
+    project_files = project_settings.setdefault('files', [])
     removed_files = 0
     for filename in files:
         if filename in project_files:
@@ -326,42 +327,41 @@ def remove(files):
 
 
 @builds.command('build')
-@click.argument('project', default=active_configuration.get('default_project', 'default'))
+@click.argument('project_name', default=active_configuration.get('default_project', 'default'))
 @click.option('target', '--target', default='debug', help='Select target to build (debug/release)')
 @click.option('verbose', '--verbose', flag_value=True, help='Verbose command output')
 @click.option('rebuild', '--rebuild', flag_value=True, help='Clean and re-build .o files')
 @click.option('jobs', '--jobs', default=multiprocessing.cpu_count(),
               help='Run commands in parallel with x amount of jobs')
-def build(project, target, verbose, rebuild, jobs):
+def build(project_name, target, verbose, rebuild, jobs):
     """This builds the selected project with the current settings in BUILDSFILENAME file. 
     Selected project defaults to the currently active project set in the BUILDSFILENAME file."""
 
-    active_project = active_configuration.setdefault('default_project', 'default')
-    projects = active_configuration.setdefault('projects', {'default':{}})
+    projects = active_configuration.setdefault('projects', {'default': {}})
 
     if projects is None:
         click.echo("No projects configured")
         return
 
-    project = projects.get(active_project)
+    project_settings = projects.get(project_name)
 
-    if project is None:
-        click.echo("No project found with name " + active_project)
+    if project_settings is None:
+        click.echo("No project found with name " + project_name)
         return
 
-    projectfiles = project.setdefault('files', [])
-    build_settings = project.get('build-settings', [])
+    project_files = project_settings.setdefault('files', [])
+    build_settings = project_settings.get('build-settings', [])
     project_libraries = build_settings.get('libraries', [])
     project_library_paths = build_settings.get('library-paths', [])
     project_shared_library_paths = build_settings.get('shared-library-paths', [])
     project_include_paths = build_settings.get('include-paths', [])
-    targets = project.get('targets')
+    targets = project_settings.get('targets')
     project_target = targets.get(target)
     target_arguments = project_target.get('arguments')
-    project_pipeline = project.get('pipeline')
+    project_pipeline = project_settings.get('pipeline')
 
     if project_pipeline is None:
-        click.echo('No pipeline set for project ' + active_project)
+        click.echo('No pipeline set for project ' + project_name)
         return
 
     pipeline_configuration = {
@@ -376,16 +376,16 @@ def build(project, target, verbose, rebuild, jobs):
     }
 
     pipeline = BuildPipeline(
-        active_project,
+        project_name,
         project_pipeline,
-        CommandPreprocessor(active_project),
+        CommandPreprocessor(project_name),
         pipeline_configuration
     )
 
     if pipeline is None:
         click.echo('No pipeline configuration for pipeline ' + project_pipeline)
     
-    stepsFinished = pipeline.Run(projectfiles)
+    stepsFinished = pipeline.Run(project_files)
     click.echo('Finished ' + str(stepsFinished) + ' steps')
 
 
@@ -394,8 +394,8 @@ def watch():
     """Watch files for changes and run a build step on them if needed"""
     default_project = active_configuration.setdefault('default_project', 'default')
     projects = active_configuration.setdefault('projects', {'default':{}})
-    project = projects.get(default_project)
-    project_files = project.setdefault('files', [])
+    project_settings = projects.get(default_project)
+    project_files = project_settings.setdefault('files', [])
     watcher = Watcher(project_files, None)
     watcher.Start()
 
@@ -406,10 +406,10 @@ def set():
 
 
 @set.command('default_project')
-@click.argument('project', type=str)
-def set_default_project(project):
+@click.argument('project_name', type=str)
+def set_default_project(project_name):
     """Sets the default project."""
-    click.echo('Set %s as the default project' % (project))
+    click.echo('Set %s as the default project' % project_name)
 
 # @set.command('default_project')
 # @click.argument('x', type=float)
