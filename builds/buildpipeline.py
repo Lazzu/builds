@@ -31,7 +31,7 @@ class CPP:
     def build(self, project_name, settings, files):
         oFiles = []
         newestOFile = ''
-        newestOFileTime = sys.maxsize
+        newestOFileTime = 0
         for currentFile in files:
             currentFile = currentFile + '.o'
             if currentFile not in oFiles:
