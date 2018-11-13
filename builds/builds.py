@@ -13,7 +13,7 @@ from termcolor import colored
 
 init() # colorama to work on all platforms
 
-default_builds_configuration = {
+DEFAULT_BUILDS_CONFIGURATION = {
     'projects' : {
         'default' : {
             'pipeline' : 'CPP',
@@ -47,16 +47,18 @@ active_configuration = {}
 
 BUILDSFILENAME = '.buildsfile'
 
-def search_config_path(current_path=''):
-    while True:
-        file_path = current_path + '/' + BUILDSFILENAME
+def search_config_path():
+    found_path = ""
+    file_path = BUILDSFILENAME
+    while not found_path:
         if not os.path.exists(file_path):
-            next_path = '../' + current_path
+            next_path = '../' + file_path
             if not os.path.exists(next_path):
-                return BUILDSFILENAME
-            current_path = next_path
-            continue
-        return file_path
+                found_path = BUILDSFILENAME
+            file_path = next_path
+        else:
+            found_path = file_path
+    return found_path
 
 
 builds_file = search_config_path()
@@ -70,9 +72,9 @@ if os.path.exists(builds_file):
         builds_configuration = json.load(file)
 else:
     if input(colored('Builds not initialized.', 'red') + ' Do you want to initialize a new builds file in the current directory? (y/N) ') == 'y':
-        save_configuration(default_builds_configuration)
+        save_configuration(DEFAULT_BUILDS_CONFIGURATION)
 
-active_configuration = {**default_builds_configuration, **builds_configuration}
+active_configuration = {**DEFAULT_BUILDS_CONFIGURATION, **builds_configuration}
 
 def output_settings(settings):
     click.echo(colored(json.dumps(settings, sort_keys=True, indent=2), 'green'))
