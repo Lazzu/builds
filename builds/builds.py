@@ -10,6 +10,7 @@ from buildpipeline import BuildPipeline
 from commandpreprocessor import CommandPreprocessor
 from colorama import init
 from termcolor import colored
+from watcher import Watcher
 
 init() # colorama to work on all platforms
 
@@ -359,6 +360,17 @@ def build(project, target, verbose, rebuild, jobs):
     
     stepsFinished = pipeline.Run(projectfiles)
     click.echo('Finished ' + str(stepsFinished) + ' steps')
+
+
+@builds.command('watch')
+def watch():
+    """Watch files for changes and run a build step on them if needed"""
+    default_project = active_configuration.setdefault('default_project', 'default')
+    projects = active_configuration.setdefault('projects', {'default':{}})
+    project = projects.get(default_project)
+    project_files = project.setdefault('files', [])
+    watcher = Watcher(project_files, None)
+    watcher.Start()
 
 
 @builds.group('set')
