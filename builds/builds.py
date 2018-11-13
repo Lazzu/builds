@@ -48,6 +48,7 @@ active_configuration = {}
 
 BUILDSFILENAME = '.buildsfile'
 
+
 def search_config_path():
     found_path = ""
     file_path = BUILDSFILENAME
@@ -64,9 +65,11 @@ def search_config_path():
 
 builds_file = search_config_path()
 
+
 def save_configuration(config):
     with open(builds_file, 'w', encoding='utf-8') as file:
         json.dump(config, file, indent=4)
+
 
 if os.path.exists(builds_file):
     with open(builds_file, mode='r', encoding='utf-8') as file:
@@ -77,13 +80,16 @@ else:
 
 active_configuration = {**DEFAULT_BUILDS_CONFIGURATION, **builds_configuration}
 
+
 def output_settings(settings):
     click.echo(colored(json.dumps(settings, sort_keys=True, indent=2), 'green'))
+
 
 def process_command_string(string, current_project, current_file = ''):
     string = string.replace("$PROJECTNAME", current_project)
     string = string.replace("$FILE", current_file)
     return string
+
 
 def add_file(file_list, filename):
     filename = filename.replace('./', '')
@@ -91,6 +97,7 @@ def add_file(file_list, filename):
         print('Dir')
     file_list.append(filename)
     click.echo(colored('+ ', 'green') + filename)
+
 
 def add_interactive_dir(file_list, dirname):
     added = 0
@@ -120,6 +127,7 @@ def add_interactive_dir(file_list, dirname):
         
     return added
 
+
 def add_interactive(file_list):
     added = 0
     added += add_interactive_dir(file_list, '.')
@@ -133,6 +141,7 @@ def builds():
     This tool manages the project building files.
     """
 
+
 @builds.group('project')
 def project():
     """Displays the currently active settings."""
@@ -143,6 +152,7 @@ def project_show():
     """Show the currently active project name"""
     default_project = active_configuration.get('default_project', 'default')
     print(default_project)
+
 
 @project.command('rename')
 @click.argument('newname', nargs=1, type=str)
@@ -158,6 +168,7 @@ def project_rename(newname, target):
         active_configuration['default_project'] = newname
     save_configuration(active_configuration)
 
+
 @builds.group('settings')
 def settings():
     """Settings related commands"""
@@ -167,7 +178,6 @@ def settings():
 def print_settings():
     """Displays the currently active settings."""
     output_settings(active_configuration)
-
 
 
 @builds.command('add-library')
@@ -190,10 +200,10 @@ def add_library(args, path):
             print(colored('+ path ', 'green') + path)
         else:
             print(colored('# path ', 'yellow') + path + colored(' Already configured', 'yellow'))
-        
 
     # Add libraries from the argument list
-    if libs == None: libs = []
+    if libs is None:
+        libs = []
     for lib in args:
         if lib not in libs:
             libs.append(lib)
@@ -202,6 +212,7 @@ def add_library(args, path):
             print(colored('# ', 'yellow') + lib + colored(' Already configured', 'yellow'))
     
     save_configuration(active_configuration)
+
 
 @builds.command('add-shared-library')
 @click.argument('args', nargs=-1, type=str)
@@ -223,7 +234,6 @@ def add_library(args, path):
             print(colored('+ path ', 'green') + path)
         else:
             print(colored('# path ', 'yellow') + path + colored(' Already configured', 'yellow'))
-        
 
     # Add libraries from the argument list
     if libs == None: libs = []
@@ -235,6 +245,7 @@ def add_library(args, path):
             print(colored('# ', 'yellow') + lib + colored(' Already configured', 'yellow'))
     
     save_configuration(active_configuration)
+
 
 @builds.command('add-include')
 @click.argument('args', nargs=-1, type=str)
@@ -395,7 +406,6 @@ def set_default_project(project):
 #def set_default_project(x, y, ty):
 #    """Sets a mine at a specific coordinate."""
 #    click.echo('Set %s mine at %s,%s' % (ty, x, y))
-
 
 
 if __name__ == '__main__':
