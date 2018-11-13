@@ -1,18 +1,16 @@
 #!/usr/bin/python3
 
-import click
 import json
-import os
-import types
 import multiprocessing
-from buildcommand import BuildCommand
+import os
+import click
+from termcolor import colored
 from buildpipeline import BuildPipeline
 from commandpreprocessor import CommandPreprocessor
-from colorama import init
-from termcolor import colored
 from watcher import Watcher
+from colorama import init
 
-init() # colorama to work on all platforms
+init()  # colorama to work on all platforms
 
 DEFAULT_BUILDS_CONFIGURATION = {
     'projects' : {
@@ -75,7 +73,8 @@ if os.path.exists(builds_file):
     with open(builds_file, mode='r', encoding='utf-8') as file:
         builds_configuration = json.load(file)
 else:
-    if input(colored('Builds not initialized.', 'red') + ' Do you want to initialize a new builds file in the current directory? (y/N) ') == 'y':
+    if input(colored('Builds not initialized.', 'red') +
+             ' Do you want to initialize a new builds file in the current directory? (y/N) ') == 'y':
         save_configuration(DEFAULT_BUILDS_CONFIGURATION)
 
 active_configuration = {**DEFAULT_BUILDS_CONFIGURATION, **builds_configuration}
@@ -105,8 +104,16 @@ def add_interactive_dir(file_list, dirname):
     while do_continue:
         do_continue = False
 
-        files = [dirname + '/' + f for f in os.listdir(dirname) if os.path.isfile(dirname + '/' + f)]
-        dirs = [dirname + '/' + d for d in os.listdir(dirname) if os.path.isdir(dirname + '/' + d) and len(os.listdir(dirname + '/' + d)) > 0]
+        files = [
+            dirname + '/' + f
+            for f in os.listdir(dirname)
+            if os.path.isfile(dirname + '/' + f)
+        ]
+        dirs = [
+            dirname + '/' + d
+            for d in os.listdir(dirname)
+            if os.path.isdir(dirname + '/' + d) and len(os.listdir(dirname + '/' + d)) > 0
+        ]
 
         for f in files:
             if not os.path.isfile(f):
@@ -156,11 +163,12 @@ def project_show():
 
 @project.command('rename')
 @click.argument('newname', nargs=1, type=str)
-@click.option('target', '-p', default=active_configuration.get('default_project', 'default'), help='Rename the given project instead of the currently active project')
+@click.option('target', '-p', default=active_configuration.get('default_project', 'default'),
+              help='Rename the given project instead of the currently active project')
 def project_rename(newname, target):
     """Rename the currently active project"""
     default_project = active_configuration.get('default_project', 'default')
-    projects = active_configuration.get('projects', {'default':{}})
+    projects = active_configuration.get('projects', {'default': {}})
     project = projects.get(target)
     projects.pop(target, None)
     projects[newname] = project
@@ -272,7 +280,9 @@ def add_include(args):
 
 @builds.command('add')
 @click.argument('files', nargs=-1, type=str)
-@click.option('interactive', '-i', flag_value=True, help='Add files interactively. Lists all files not yet in the project in the current directory, and asks if you want to add them or not.')
+@click.option('interactive', '-i', flag_value=True,
+              help='Add files interactively. Lists all files not yet in the project in the current directory, '
+                   'and asks if you want to add them or not.')
 def add(files, interactive):
     """Add file(s) to the build."""
     default_project = active_configuration.setdefault('default_project', 'default')
@@ -320,7 +330,8 @@ def remove(files):
 @click.option('target', '--target', default='debug', help='Select target to build (debug/release)')
 @click.option('verbose', '--verbose', flag_value=True, help='Verbose command output')
 @click.option('rebuild', '--rebuild', flag_value=True, help='Clean and re-build .o files')
-@click.option('jobs', '--jobs', default=multiprocessing.cpu_count(), help='Run commands in parallel with x amount of jobs')
+@click.option('jobs', '--jobs', default=multiprocessing.cpu_count(),
+              help='Run commands in parallel with x amount of jobs')
 def build(project, target, verbose, rebuild, jobs):
     """This builds the selected project with the current settings in BUILDSFILENAME file. 
     Selected project defaults to the currently active project set in the BUILDSFILENAME file."""
@@ -364,7 +375,12 @@ def build(project, target, verbose, rebuild, jobs):
         'arguments' : target_arguments
     }
 
-    pipeline = BuildPipeline(active_project, project_pipeline, CommandPreprocessor(active_project), pipeline_configuration)
+    pipeline = BuildPipeline(
+        active_project,
+        project_pipeline,
+        CommandPreprocessor(active_project),
+        pipeline_configuration
+    )
 
     if pipeline is None:
         click.echo('No pipeline configuration for pipeline ' + project_pipeline)
@@ -395,15 +411,15 @@ def set_default_project(project):
     """Sets the default project."""
     click.echo('Set %s as the default project' % (project))
 
-#@set.command('default_project')
-#@click.argument('x', type=float)
-#@click.argument('y', type=float)
-#@click.option('ty', '--moored', flag_value='moored',
+# @set.command('default_project')
+# @click.argument('x', type=float)
+# @click.argument('y', type=float)
+# @click.option('ty', '--moored', flag_value='moored',
 #              default=True,
 #              help='Moored (anchored) mine. Default.')
-#@click.option('ty', '--drifting', flag_value='drifting',
+# @click.option('ty', '--drifting', flag_value='drifting',
 #              help='Drifting mine.')
-#def set_default_project(x, y, ty):
+# def set_default_project(x, y, ty):
 #    """Sets a mine at a specific coordinate."""
 #    click.echo('Set %s mine at %s,%s' % (ty, x, y))
 
