@@ -333,7 +333,8 @@ def remove(files):
 @click.option('rebuild', '--rebuild', flag_value=True, help='Clean and re-build .o files')
 @click.option('jobs', '--jobs', default=multiprocessing.cpu_count(),
               help='Run commands in parallel with x amount of jobs')
-def build(project_name, target, verbose, rebuild, jobs):
+@click.option('run', '--run', flag_value=True, help='Run executable output after building')
+def build(project_name, target, verbose, rebuild, jobs, run):
     """This builds the selected project with the current settings in BUILDSFILENAME file. 
     Selected project defaults to the currently active project set in the BUILDSFILENAME file."""
 
@@ -386,6 +387,16 @@ def build(project_name, target, verbose, rebuild, jobs):
         click.echo('No pipeline configuration for pipeline ' + project_pipeline)
     
     stepsFinished = pipeline.Run(project_files)
+
+    if run:
+        if target == "debug":
+            click.echo(colored('debug', 'green') + " " + project_name)
+            os.system("gdb ./"+project_name)
+        else:
+            click.echo(colored('run', 'green') + " " + project_name)
+            os.system("./"+project_name)
+        stepsFinished += 1
+
     click.echo('Finished ' + str(stepsFinished) + ' steps')
 
 
