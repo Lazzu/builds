@@ -1,9 +1,10 @@
-import sys
-import time
 import logging
+import time
+
 from termcolor import colored
-from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
+
 
 class WatchEventHandler(FileSystemEventHandler):
     def __init__(self, files_list, build_callback_object):
@@ -38,13 +39,14 @@ class WatchEventHandler(FileSystemEventHandler):
         if event.src_path in self.files_list and self.build is not None:
             self.build.Run(event.src_path)
 
+
 class Watcher:
-    """The watcher class that will watch over changes in the CWD if any of the project files change, and will build them."""
+    """The watcher class that will watch over changes in the CWD if any of the project files change, and will build
+    them. """
     def __init__(self, files_list, build_callback_object):
         self.handler = WatchEventHandler(files_list, build_callback_object)
-        
 
-    def Start(self):
+    def start(self):
         print(colored('Started to watch the current directory.', 'green'))
         logging.basicConfig(level=logging.INFO,
                             format='%(asctime)s - %(message)s',

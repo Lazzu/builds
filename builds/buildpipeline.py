@@ -1,11 +1,12 @@
 import sys
 import os
+
 from buildcommand import BuildCommand
 from multiprocessing.dummy import Pool as ThreadPool
-import multiprocessing
+
 
 class CPP:
-    '''This is the C++ pipeline step functionality for builds'''
+    """This is the C++ pipeline step functionality for builds"""
 
     def __init__(self, command_processor):
         self.command_processor = command_processor
@@ -14,7 +15,7 @@ class CPP:
         commands = []
         step_files = []
         for project_file in files:
-            command, outfile = self.compile_step(project_name, settings, project_file)
+            command, outfile = self.compile_step(settings, project_file)
             if outfile in step_files:
                 continue
             commands.append(BuildCommand(command, 'compile', project_file, project_file, outfile))
@@ -23,7 +24,9 @@ class CPP:
 
     def compile_step(self, project_name, settings, project_file):
         include_paths = ['-I' + inc for inc in settings['include-paths']]
-        command = settings.get('tool') + " " + " ".join(str(x) for x in settings.get('arguments')) + " " + " ".join(include_paths);
+        command = settings.get('tool') + " " + " ".join(
+            str(x) for x in settings.get('arguments')
+        ) + " " + " ".join(include_paths)
         command = self.command_processor.Process(command, project_file)
         outfile = project_file + ".o"
         return command, outfile
@@ -47,8 +50,8 @@ class CPP:
         command = self.command_processor.Process(command, project_name)
         commands = [BuildCommand(command, 'build', project_name, newestOFile, project_name)]
         step_files = [project_name]
-        return (commands, step_files)
-    
+        return commands, step_files
+
     def get_default_pipeline(self):
         return [
             {
@@ -74,7 +77,7 @@ class CPP:
 
 
 class BuildPipeline:
-    '''This will determine the pipeline required for the project and will call correct methods'''
+    """This will determine the pipeline required for the project and will call correct methods"""
 
     def __init__(self, projectname, pipeline, command_processor, pipeline_configuration):
         try:
@@ -93,7 +96,7 @@ class BuildPipeline:
         self.include_paths = pipeline_configuration['include-paths']
         self.arguments = pipeline_configuration['arguments']
     
-    def GenerateStep(self, step, settings, files):
+    def generate_step(self, step, settings, files):
         func = getattr(self.step, step)
         settings['libraries'] = self.libraries
         settings['library-paths'] = self.library_paths
@@ -102,29 +105,27 @@ class BuildPipeline:
         settings['arguments'] += self.arguments
         return func(self.projectname, settings, files)
 
-    def RunCommand(self, command):
-        if not command.Run(self.pipeline_configuration):
+    def run_command(self, command):
+        if not command.run(self.pipeline_configuration):
             self.run_command_errors = True
         return self.run_command_errors
 
-    def RunCommands(self, build_commands):
+    def run_commands(self, build_commands):
         pool = ThreadPool(self.pipeline_configuration.get('jobs', 1))
-        pool.map(self.RunCommand, build_commands)
+        pool.map(self.run_command, build_commands)
         pool.close()
         pool.join()
         return not self.run_command_errors
 
-    def Run(self, files):
+    def run(self, files):
         build_steps = self.settings
         stepsFinished = 0
         for step in build_steps:
             steptype = step.get('type')
-            (step_commands, step_files) = self.GenerateStep(steptype, step, files)
-            success = self.RunCommands(step_commands)
+            (step_commands, step_files) = self.generate_step(steptype, step, files)
+            success = self.run_commands(step_commands)
             if success:
                 stepsFinished += 1
                 continue
             break
         return stepsFinished
-    
-    
