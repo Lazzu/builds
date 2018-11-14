@@ -37,7 +37,7 @@ class WatchEventHandler(FileSystemEventHandler):
         what = 'directory' if event.is_directory else 'file'
         logging.info("Modified %s: %s", what, event.src_path)
         if event.src_path in self.files_list and self.build is not None:
-            self.build.Run(event.src_path)
+            self.build.file_modified(event.src_path)
 
 
 class Watcher:
