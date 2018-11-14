@@ -388,7 +388,7 @@ def build(project_name, target, verbose, rebuild, jobs, run):
     
     stepsFinished = pipeline.Run(project_files)
 
-    if run:
+    if run and not pipeline.run_command_errors:
         if target == "debug":
             click.echo(colored('debug', 'green') + " " + project_name)
             os.system("gdb ./"+project_name)
