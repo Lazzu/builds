@@ -77,7 +77,13 @@ else:
              ' Do you want to initialize a new builds file in the current directory? (y/N) ') == 'y':
         save_configuration(DEFAULT_BUILDS_CONFIGURATION)
 
-active_configuration = {**DEFAULT_BUILDS_CONFIGURATION, **builds_configuration}
+
+def merge_two_dicts(x, y):
+    z = x.copy()
+    z.update(y)
+    return z
+
+active_configuration = merge_two_dicts(DEFAULT_BUILDS_CONFIGURATION, builds_configuration)
 
 
 def output_settings(settings_out):
