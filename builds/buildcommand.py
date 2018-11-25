@@ -12,6 +12,32 @@ class BuildCommand:
         self.outfile = outfile
         self.displayName = displayName
         self.success = False
+
+    def subprocess_run(*popenargs, input=None, check=False, **kwargs):
+        if input is not None:
+            if 'stdin' in kwargs:
+                raise ValueError('stdin and input arguments may not both be used.')
+            kwargs['stdin'] = subprocess.PIPE
+        if 'bufsize' in kwargs:
+            kwargs['bufsize'] = Int(kwargs['bufsize'])
+
+        process = subprocess.Popen(*popenargs, **kwargs)
+
+        try:
+            stdout, stderr = process.communicate(input)
+        except:
+            process.kill()
+            process.wait()
+            raise
+
+        retcode = process.poll()
+
+        if check and retcode:
+            raise subprocess.CalledProcessError(
+                retcode, process.args, output=stdout, stderr=stderr)
+
+        return retcode, stdout, stderr
+
     
     def run(self, pipeline_configuration):
         verbose = pipeline_configuration.get('verbose', False)
@@ -30,13 +56,15 @@ class BuildCommand:
             if verbose:
                 print(self.command)
 
-            message = subprocess.run(
+            retcode, stdout, stderr = self.subprocess_run(
                 [self.command],
                 shell=True,
                 stderr=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 check=True
-            ).stdout.decode("utf-8")
+            )
+            
+            message = stdout.decode("utf-8")
 
             self.success = True
 

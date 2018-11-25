@@ -22,9 +22,9 @@ class CPP:
 
     def compile_step(self, project_name, settings, project_file):
         include_paths = ['-I' + inc for inc in settings['include-paths']]
-        command = settings.get('tool') + " " + " ".join(
+        command = [settings.get('tool'), " ".join(
             str(x) for x in settings.get('arguments')
-        ) + " " + " ".join(include_paths)
+        ), " ".join(include_paths)]
         command = self.command_processor.Process(command, project_file)
         outfile = project_file + ".o"
         return command, outfile
