@@ -68,5 +68,5 @@ With a lack of better documentation, here are some commands:
 - `builds.py remove filename` remove a file
 - `builds.py add-library libraryname [--path librarypath]` add a library and/or a library path
 - `builds.py add-include includepath` add a include path
-- `builds.py add-shared-library sharedlibrary` add a shared library
+- `builds.py add-shared-library sharedlibrary [--path sharedlibrarypath]` add a shared library and/or runtime shared library path
 - `builds.py settings print` print the current settings as json to the stdout
