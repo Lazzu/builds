@@ -23,7 +23,13 @@ Hello, world!
 
 ## Requirements
 
-- Python 3.5
+- Python 3.5 or newer
+
+## Getting started
+
+1. Clone the repo
+2. pip install -r requirements.txt
+3. Try the example usage with a hello.cpp of your own
 
 ## Supported features
 
@@ -35,13 +41,29 @@ Hello, world!
 - Add shared libraries and paths
 - Modular support for multiple project types (i.e. other than C++)
 
-## Roadmap
+## Upcoming features
 
-- Watch project files and run build steps on them
-- Python 3.4 support (or maybe even earlier)
+- Watch project files and run specific build steps on them
+- Python 3.4 support
 - Manage project folder structure
 
 ## Possible future features
 
 - Import make or cmake files
 - Export make or cmake files
+- Support for older versions of python
+
+## List of commands
+
+With a lack of better documentation, here are some commands:
+
+- `builds.py build [--rebuild] [--verbose] [--jobs n] [--run] [--target release] [projectname]` build current or named project
+- `builds.py project show` show active project name
+- `builds.py project rename [-p projectname] newprojectname` rename a project or a current project with a new name
+- `builds.py add filename` add a file
+- `builds.py add --interactive` add files interactively
+- `builds.py remove filename` remove a file
+- `builds.py add-library libraryname [--path librarypath]` add a library and/or a library path
+- `builds.py add-include includepath` add a include path
+- `builds.py add-shared-library sharedlibrary` add a shared library
+- `builds.py settings print` print the current settings as json to the stdout
