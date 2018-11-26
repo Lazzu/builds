@@ -8,13 +8,14 @@ Not production ready yet. You can test the tool with the example usage below.
 ## Example usage
 
 ```
-$ python builds.py add hello.cpp
+$ builds add hello.cpp
 + hello.cpp
 Added 1 file(s)
-$ python builds/builds.py add-library memmanage -p libs
+$ builds project rename hello
+$ builds add-library memmanage -p libs
 + path libs
 + memmanage
-$ python builds.py build
+$ builds build
 compile hello.cpp
 build hello
 $ ./hello
@@ -28,8 +29,9 @@ Hello, world!
 ## Getting started
 
 1. Clone the repo
-2. pip install -r requirements.txt
-3. Try the example usage with a hello.cpp of your own
+2. `pip install -r requirements.txt`
+3. `ln -s /path/to/builds.py /usr/local/bin/builds`
+4. Try the example usage with a hello.cpp of your own
 
 ## Supported features
 
