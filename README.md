@@ -9,6 +9,7 @@ Not production ready yet. You can test the tool with the example usage below.
 
 ```
 $ builds add hello.cpp
+Builds not initialized. Do you want to initialize a new builds file in the current directory? (y/N) y
 + hello.cpp
 Added 1 file(s)
 $ builds project rename hello
