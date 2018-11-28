@@ -343,10 +343,11 @@ def remove(files):
 @click.option('target', '--target', default='debug', help='Select target to build (debug/release)')
 @click.option('verbose', '--verbose', flag_value=True, help='Verbose command output')
 @click.option('rebuild', '--rebuild', flag_value=True, help='Clean and re-build .o files')
+@click.option('machine', '--machine', flag_value=True, help='Machine-readable compiler messages')
 @click.option('jobs', '--jobs', default=multiprocessing.cpu_count(),
               help='Run commands in parallel with x amount of jobs')
 @click.option('run', '--run', flag_value=True, help='Run executable output after building')
-def build(project_name, target, verbose, rebuild, jobs, run):
+def build(project_name, target, verbose, rebuild, machine, jobs, run):
     """This builds the selected project with the current settings in BUILDSFILENAME file. 
     Selected project defaults to the currently active project set in the BUILDSFILENAME file."""
 
@@ -381,6 +382,7 @@ def build(project_name, target, verbose, rebuild, jobs, run):
         'jobs' : jobs,
         'verbose' : verbose,
         'rebuild' : rebuild,
+        'machine-readable' : machine,
         'libraries' : project_libraries,
         'library-paths' : project_library_paths,
         'shared-library-paths' : project_shared_library_paths,
@@ -408,8 +410,8 @@ def build(project_name, target, verbose, rebuild, jobs, run):
             click.echo(colored('run', 'green') + " " + project_name)
             os.system("./"+project_name)
         stepsFinished += 1
-
-    click.echo('Finished ' + str(stepsFinished) + ' steps')
+    if not machine:
+        click.echo('Finished ' + str(stepsFinished) + ' steps')
 
 
 @builds.command('watch')
