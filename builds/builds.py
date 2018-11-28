@@ -1,9 +1,9 @@
 #!/usr/bin/python3
-
 import json
 import multiprocessing
 import os
 import click
+
 from termcolor import colored
 from buildpipeline import BuildPipeline
 from commandpreprocessor import CommandPreprocessor
@@ -77,7 +77,13 @@ else:
              ' Do you want to initialize a new builds file in the current directory? (y/N) ') == 'y':
         save_configuration(DEFAULT_BUILDS_CONFIGURATION)
 
-active_configuration = {**DEFAULT_BUILDS_CONFIGURATION, **builds_configuration}
+
+def merge_two_dicts(x, y):
+    z = x.copy()
+    z.update(y)
+    return z
+
+active_configuration = merge_two_dicts(DEFAULT_BUILDS_CONFIGURATION, builds_configuration)
 
 
 def output_settings(settings_out):
@@ -392,7 +398,7 @@ def build(project_name, target, verbose, rebuild, jobs, run):
     if pipeline is None:
         click.echo('No pipeline configuration for pipeline ' + project_pipeline)
     
-    stepsFinished = pipeline.Run(project_files)
+    stepsFinished = pipeline.run(project_files)
 
     if run and not pipeline.run_command_errors:
         if target == "debug":
@@ -414,7 +420,7 @@ def watch():
     project_settings = projects.get(default_project)
     project_files = project_settings.setdefault('files', [])
     watcher = Watcher(project_files, None)
-    watcher.Start()
+    watcher.start()
 
 
 @builds.group('set')
