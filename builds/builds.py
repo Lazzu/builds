@@ -208,7 +208,9 @@ def add_library(args, path):
     lib_paths = build_settings.get('library-paths')
 
     # Add path if it is valid
-    if path and os.path.isdir('./' + path):
+    if path[0] != "/":
+        path = "./" + path
+    if path and os.path.isdir(path):
         if path not in lib_paths:
             lib_paths.append(path)
             print(colored('+ path ', 'green') + path)
@@ -231,7 +233,7 @@ def add_library(args, path):
 @builds.command('add-shared-library')
 @click.argument('args', nargs=-1, type=str)
 @click.option('path', '-p', default='', help='Add shared library path along with the library')
-def add_library(args, path):
+def add_shared_library(args, path):
 
     # Figure out correct variables
     default_project = active_configuration.setdefault('default_project', 'default')
@@ -242,7 +244,9 @@ def add_library(args, path):
     slib_paths = build_settings.get('shared-library-paths')
 
     # Add path if it is valid
-    if path and os.path.isdir('./' + path):
+    if path[0] != "/":
+        path = "./" + path
+    if path and os.path.isdir(path):
         if path not in slib_paths:
             slib_paths.append(path)
             print(colored('+ path ', 'green') + path)
@@ -275,7 +279,9 @@ def add_include(args):
 
     # Add path if it is valid
     for path in args:
-        if path and os.path.isdir('./' + path):
+        if path[0] != "/":
+            path = "./" + path
+        if path and os.path.isdir(path):
             if path not in inc_paths:
                 inc_paths.append(path)
                 print(colored('+ path ', 'green') + path)
@@ -337,10 +343,11 @@ def remove(files):
 @click.option('target', '--target', default='debug', help='Select target to build (debug/release)')
 @click.option('verbose', '--verbose', flag_value=True, help='Verbose command output')
 @click.option('rebuild', '--rebuild', flag_value=True, help='Clean and re-build .o files')
+@click.option('machine', '--machine', flag_value=True, help='Machine-readable compiler messages')
 @click.option('jobs', '--jobs', default=multiprocessing.cpu_count(),
               help='Run commands in parallel with x amount of jobs')
 @click.option('run', '--run', flag_value=True, help='Run executable output after building')
-def build(project_name, target, verbose, rebuild, jobs, run):
+def build(project_name, target, verbose, rebuild, machine, jobs, run):
     """This builds the selected project with the current settings in BUILDSFILENAME file. 
     Selected project defaults to the currently active project set in the BUILDSFILENAME file."""
 
@@ -375,6 +382,7 @@ def build(project_name, target, verbose, rebuild, jobs, run):
         'jobs' : jobs,
         'verbose' : verbose,
         'rebuild' : rebuild,
+        'machine-readable' : machine,
         'libraries' : project_libraries,
         'library-paths' : project_library_paths,
         'shared-library-paths' : project_shared_library_paths,
@@ -402,8 +410,8 @@ def build(project_name, target, verbose, rebuild, jobs, run):
             click.echo(colored('run', 'green') + " " + project_name)
             os.system("./"+project_name)
         stepsFinished += 1
-
-    click.echo('Finished ' + str(stepsFinished) + ' steps')
+    if not machine:
+        click.echo('Finished ' + str(stepsFinished) + ' steps')
 
 
 @builds.command('watch')
