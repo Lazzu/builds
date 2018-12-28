@@ -208,7 +208,7 @@ def add_library(args, path):
     lib_paths = build_settings.get('library-paths')
 
     # Add path if it is valid
-    if path[0] != "/":
+    if path and path[0] != "/":
         path = "./" + path
     if path and os.path.isdir(path):
         if path not in lib_paths:
