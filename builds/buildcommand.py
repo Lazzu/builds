@@ -14,15 +14,16 @@ class BuildCommand:
         self.success = False
 
     def process_message(self, message, pipeline_configuration):
-        tag_error = 'error:'
-        tag_warning = 'warning:'
+        tag_error = ' error:'
+        tag_warning = ' warning:'
         tag_hint = 'required from here'
+        tag_linker = 'undefined reference to'
         if pipeline_configuration.get('machine-readable', False):
             lines = message.split("\n")
             output = []
             for line in lines:
                 out = False
-                for tag in [tag_error, tag_warning]:
+                for tag in [tag_error, tag_warning, tag_linker]:
                     tag_pos = line.find(tag)
                     if tag_pos == -1:
                         continue
@@ -41,11 +42,16 @@ class BuildCommand:
                             tag_pos = faux_tag_pos + 1
                             break
                         faux_tag_pos = faux_tag_pos - 1
+                    file_line = line[0:tag_pos]
                     if tag == tag_error:
-                        out = "error"
+                        out = "compile-error"
+                        if file_line == "collect2":
+                        	file_line = "*"
                     if tag == tag_warning:
-                        out = "warning"
-                    out = out + " " + line[0:tag_pos] + " " + line[message_pos:len(line)]
+                        out = "compile-warning"
+                    if tag == tag_linker:
+                        out = "link-error"
+                    out = out + " " + file_line + " " + line[message_pos:len(line)]
                     break
                 if out != False:
                     output.append(out)
@@ -59,6 +65,8 @@ class BuildCommand:
                 tag_error_pos = line.find(tag_error)
                 if tag_error_pos == -1:
                     tag_error_pos = line.find(tag_warning)
+                if tag_error_pos == -1:
+                    tag_error_pos = line.find(tag_linker)
                 if tag_error_pos == -1:
                     tag_error_pos = line.find(tag_hint)
                 if tag_error_pos == -1:
